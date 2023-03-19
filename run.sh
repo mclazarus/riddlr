@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
-if [ -z $1 ]; then
-    echo "Usage: $0 <env_file>"
+if [ -z $2 ]; then
+    echo "Usage: $0 <env_file> <path_to_data>"
     echo "The env file will have your keys and secrets."
+    echo "the leaderboard gets stored in the data dir."
     exit 1
 fi
 
 environment=$1
+data=$2
 
-docker run -d --rm --env-file $environment --name riddlr riddlr
+docker run -d --restart=unless-stopped --rm -v $data:/app/data --env-file $environment --name riddlr riddlr

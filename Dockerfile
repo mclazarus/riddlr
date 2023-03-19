@@ -7,4 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY riddlr.py .
 
+RUN mkdir -p /app/data
+
 CMD ["python", "riddlr.py"]
