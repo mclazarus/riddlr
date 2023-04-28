@@ -10,4 +10,4 @@ fi
 environment=$1
 data=$2
 
-docker run -d --restart=unless-stopped --rm -v $data:/app/data --env-file $environment --name riddlr riddlr
+docker run -d --restart=unless-stopped -v $data:/app/data --env-file $environment --name riddlr riddlr
