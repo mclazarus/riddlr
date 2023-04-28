@@ -9,7 +9,6 @@ import signal
 import sys
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
-from collections import defaultdict
 
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -24,12 +23,11 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Store users' scores
 user_scores_file = 'data/user_scores.json'
 
+user_scores = {}
 # Load the user scores from the file
 if os.path.exists(user_scores_file):
     with open(user_scores_file, 'r') as f:
-        user_scores = defaultdict(int, json.load(f))
-else:
-    user_scores = defaultdict(int)
+        user_scores = json.load(f)
 
 # number of riddles
 riddles_count = 0
@@ -72,20 +70,20 @@ def fetch_random_wikipedia_article():
 # Function to get riddle from ChatGPT API
 async def get_riddle(overview, title):
     openai.api_key = OPENAI_API_KEY
-
-    prompt = f"Generate a riddle or clue based on the following wikipedia overview that will elicit the answer {title} do not supply the answer do not prefix the question with Q and don't use the answer in the clue: {overview}"
-
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=200,
-        temperature=0.7,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful riddle bot. You are given a wikipedia article title and the contents of the page and you must generate a riddle or clue that will elicit the title of the article.  You aim to just give the riddle and not reveal the answer in your response.  Someone with a high school education should have a good chance to guess the riddle."},
+            {"role": "user", "content": f"The answer should be '{title}', and the details are: {overview}"}
+        ]
     )
 
-    riddle = response.choices[0].text.strip()
+    print(response)
+
+    try:
+        riddle = response['choices'][0]['message']['content'].strip()
+    except:
+        riddle = "My brain is fried, I can't think of a riddle. Please insert a new brain or pay openAI or whatever."
 
     return riddle
 
@@ -147,6 +145,8 @@ async def check_answer(ctx, *args):
         if current_answer.lower() in guess.lower() and correct_answers_count < 6:
             correct_answers_count += 1
             points_awarded = 11 - correct_answers_count
+            if ctx.author.id not in user_scores:
+                user_scores[ctx.author.id] = 0
             user_scores[ctx.author.id] += points_awarded
             save_user_scores()
             correct_users.append(ctx.author.id)
@@ -181,6 +181,8 @@ async def check_answer(ctx):
         else:
             cheaters.append(ctx.author.id)
             cheaters_count += 1
+        if ctx.author.id not in user_scores:
+            user_scores[ctx.author.id] = 0
         user_scores[ctx.author.id] -= 6
         save_user_scores()
         await ctx.send(f"The answer is: {current_answer}\nAnd you've had 6 points deducted for cheating.")
